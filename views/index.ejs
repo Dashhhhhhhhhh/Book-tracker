@@ -20,11 +20,25 @@
 
    <h2>Books:</h2>
         <% if (books.length > 0 ) { %> 
-   <ul>
+   <ul class="book-list">
             <% books.forEach(book => { %>
                 <li data-id="<%= book.id %>">
-               <%= book.title %> - <%= book.author %>
-                <button class="delete-btn">Delete</button>
+
+                <div class ="book-details">
+                    <span class="display-title"><%= book.title %></span>
+                    <span class="display-author"><%= book.author %></span>   
+                </div>
+
+
+                <div class="edit-form" style="display:none">
+                <input type="text" class="edit-title" value="<%= book.title %>">
+                <input type="text" class="edit-author" value="<%= book.author %>">
+                <button type="button" class="save-btn">Save</button>
+                <button type="button" class="cancel-btn">Cancel</button>
+                </div>
+
+               <button class="edit-btn">Edit</button>
+               <button class="delete-btn">Delete</button>
                 </li>
             <% }) %>
    </ul>

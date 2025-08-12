@@ -5,6 +5,7 @@ const port = 3000;
 const path = require('path');
 const crypto = require(`crypto`);
 
+app.use(express.json());
 app.use(express.static('public'));
 app.use(express.urlencoded ({ extended: true }));
 app.set('view engine', 'ejs');
@@ -61,6 +62,23 @@ app.delete('/remove-book/:id', (req, res) => {
 
 });
 
+app.put('/edit-book/:id', (req, res) => {
+
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const index =  books.findIndex(book => book.id === id);
+
+    if (index === -1) {
+    return res.status(400).json({error: 'Book not found'});
+    }
+
+    const updatedBook = { ...books[index], ...updateData };
+
+    books[index] = updatedBook;
+    res.json({ message: 'Updated sucessfully', updatedBook });
+    
+});
 
 
 app.listen(port, () => { 
