@@ -1,3 +1,13 @@
+const pool = require('./db');
+
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection error:', err);
+  } else {
+    console.log('Connected to DB at:', res.rows[0].now);
+  }
+});
+
 const express = require('express');
 const { lstat } = require('fs');
 const app = express();
@@ -62,7 +72,7 @@ app.delete('/remove-book/:id', (req, res) => {
 
 });
 
-app.put('/edit-book/:id', (req, res) => {
+app.patch('/edit-book/:id', (req, res) => {
 
     const { id } = req.params;
     const updateData = req.body;

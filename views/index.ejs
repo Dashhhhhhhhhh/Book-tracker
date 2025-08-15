@@ -20,6 +20,7 @@
 
    <h2>Books:</h2>
         <% if (books.length > 0 ) { %> 
+    <div class="book-continer"></div>
    <ul class="book-list">
             <% books.forEach(book => { %>
                 <li data-id="<%= book.id %>">
@@ -36,6 +37,8 @@
                 <button type="button" class="save-btn">Save</button>
                 <button type="button" class="cancel-btn">Cancel</button>
                 </div>
+
+     
 
                <button class="edit-btn">Edit</button>
                <button class="delete-btn">Delete</button>
