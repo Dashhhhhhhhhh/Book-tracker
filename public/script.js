@@ -1,103 +1,128 @@
-const bookList = document.querySelector('.book-list');
+const form = document.querySelector("form");
+const bookList = document.querySelector(".book-list");
+const emptyMsg = document.querySelector(".empty-msg");
 
-bookList.addEventListener('click', async (event) => {
-    const container = event.target.closest('li');
-    const clicked = event.target.closest('button');
-    if (!container) return;
+// Load all books from the database
+async function loadBooks() {
+  try {
+    const res = await fetch("/books");
+    if (!res.ok) throw new Error("Failed to fetch books");
 
-    const isDelete = clicked.classList.contains('delete-btn');
-    const isEdit = clicked.classList.contains('edit-btn');
-    const isSave = clicked.classList.contains('save-btn');
-    const isCancel = clicked.classList.contains('cancel-btn');
+    const books = await res.json();
 
-    if (!(isDelete || isEdit || isSave || isCancel)) return;
+    bookList.innerHTML = "";
+    if (books.length === 0) {
+      emptyMsg.style.display = "block";
+      return;
+    }
+    emptyMsg.style.display = "none";
 
-    if (isEdit) {
-    const form = container.querySelector('.edit-form');
-    const details = container.querySelector('.book-details');
-    const isHidden = getComputedStyle(form).display === 'none';
+    books.forEach(book => {
+      const li = document.createElement("li");
+      li.dataset.id = book.id;
+      li.innerHTML = `
+        <strong>${book.title}</strong> by ${book.author}
+        <button class="edit-btn">Edit</button>
+        <button class="delete-btn">Delete</button>
+      `;
+      bookList.appendChild(li);
+    });
+  } catch (err) {
+    console.error("Error loading books:", err);
+  }
+}
 
-        form.style.display = isHidden ? 'block' : 'none';
-        details.style.display = isHidden ? 'none' : 'block';
-        return;
+// Add a new book
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const title = form.title.value.trim();
+  const author = form.author.value.trim();
+  if (!title || !author) return;
+
+  try {
+    const res = await fetch("/add-book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, author })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error);
+      return;
     }
 
-    if (isSave) {
-
-        const editTitle = container.querySelector('.edit-title');
-        const editAuthor = container.querySelector('.edit-author');
-        const displayTitle = container.querySelector('.display-title');
-        const displayAuthor = container.querySelector('.display-author');
-        const details = container.querySelector('.book-details');
-        const form = container.querySelector('.edit-form');
-        const title = editTitle.value.trim();
-        const author = editAuthor.value.trim();
-        const bookId = container.dataset.id;
-
-        try {
-
-            if (!title || !author) {
-                alert("Both title and author are required.");
-                return;
-            }
-
-            if (!confirm("Are you sure you want to save the changes?")) return;
-
-            clicked.disabled = true;
-            const res = await fetch(`/edit-book/${bookId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, author })
-            });
-
-            if (!res.ok) throw new Error('Failed to save changes.');
-
-            displayTitle.textContent = title;
-            displayAuthor.textContent = author;
-            form.style.display = 'none';
-            details.style.display = 'block';
-
-            clicked.disabled = false;
-        } catch (err) {
-            console.error('Error saving book:', err);
-        } finally {
-            clicked.disabled = false;
-        }
-        return;
-    }
-
-    if (isCancel) {
-
-    const editTitle = container.querySelector('.edit-title');
-    const editAuthor = container.querySelector('.edit-author');
-    const displayTitle = container.querySelector('.display-title');
-    const displayAuthor = container.querySelector('.display-author');
-    const form = container.querySelector('.edit-form');
-    const details = container.querySelector('.book-details');
-
-        editTitle.value = displayTitle.textContent;
-        editAuthor.value = displayAuthor.textContent;
-        form.style.display = 'none';
-        details.style.display = 'block';
-        return;
-    }
-
-    if (isDelete) {
-        try {
-            const bookId = container.dataset.id;
-            if (!confirm("Are you sure you want to delete this item?")) return;
-
-            clicked.disabled = true;
-            const res = await fetch(`/remove-book/${bookId}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed to delete item.');
-
-            container.remove();
-            console.log('Book deleted successfully!');
-            
-        } catch (err) {
-            console.error(err);
-        } finally {
-            clicked.disabled = false;
-        }
-    }
+    form.reset();
+    await loadBooks(); // reload books so the new book appears
+  } catch (err) {
+    console.error("Error adding book:", err);
+  }
 });
+
+// Update a book
+async function updateBook(id, newTitle, newAuthor) {
+  try {
+    const res = await fetch(`/edit-book/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle, author: newAuthor })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error);
+      return;
+    }
+
+    await loadBooks(); // refresh the list after edit
+  } catch (err) {
+    console.error("Error updating book:", err);
+  }
+}
+
+// Delete a book
+async function deleteBook(id) {
+  try {
+    const res = await fetch(`/remove-book/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error);
+      return;
+    }
+
+    await loadBooks(); // refresh the list after delete
+  } catch (err) {
+    console.error("Error deleting book:", err);
+  }
+}
+
+// Event delegation for edit and delete buttons
+bookList.addEventListener("click", async (e) => {
+  const clicked = e.target;
+  const li = clicked.closest("li");
+  if (!li) return;
+
+  const bookId = li.dataset.id;
+
+  if (clicked.classList.contains("delete-btn")) {
+    if (confirm("Are you sure you want to delete this book?")) {
+      await deleteBook(bookId);
+    }
+  }
+
+  if (clicked.classList.contains("edit-btn")) {
+    const currentTitle = li.querySelector("strong").innerText;
+    const currentAuthor = li.innerText.split(" by ")[1].replace(/EditDelete$/, "").trim();
+
+    const newTitle = prompt("Enter new title:", currentTitle);
+    const newAuthor = prompt("Enter new author:", currentAuthor);
+
+    if (newTitle && newAuthor) {
+      await updateBook(bookId, newTitle, newAuthor);
+    }
+  }
+});
+
+// Load books when the page starts
+loadBooks();

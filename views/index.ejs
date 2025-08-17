@@ -1,54 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book Tracker</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Tracker</title>
 </head>
 <body>
-   <form action="/add-book" method="POST">
-       
-        <label>Title:</label>
-        <input type="text" name="title" placeholder="Input title" required/>
+  <form class="add-form">
+    <label>Title:</label>
+    <input type="text" name="title" placeholder="Input title" required />
 
-        <label>Author:</label>
-        <input type="text" name="author" placeholder="Input author" required/>
-  
-        <button type="submit">Add Book</button>
-   </form>
+    <label>Author:</label>
+    <input type="text" name="author" placeholder="Input author" required />
 
+    <button type="submit">Add Book</button>
+  </form>
 
-   <h2>Books:</h2>
-        <% if (books.length > 0 ) { %> 
-    <div class="book-continer"></div>
-   <ul class="book-list">
-            <% books.forEach(book => { %>
-                <li data-id="<%= book.id %>">
+  <h2>Books:</h2>
+  <ul class="book-list"></ul>
+  <p class="empty-msg" style="display:none;">No books found.</p>
 
-                <div class ="book-details">
-                    <span class="display-title"><%= book.title %></span>
-                    <span class="display-author"><%= book.author %></span>   
-                </div>
-
-
-                <div class="edit-form" style="display:none">
-                <input type="text" class="edit-title" value="<%= book.title %>">
-                <input type="text" class="edit-author" value="<%= book.author %>">
-                <button type="button" class="save-btn">Save</button>
-                <button type="button" class="cancel-btn">Cancel</button>
-                </div>
-
-     
-
-               <button class="edit-btn">Edit</button>
-               <button class="delete-btn">Delete</button>
-                </li>
-            <% }) %>
-   </ul>
-   <% } else { %>
-    <p>No Books found.</p>
-   <% } %>
-
-   <script src="/script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

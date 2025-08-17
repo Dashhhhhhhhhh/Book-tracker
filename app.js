@@ -1,5 +1,11 @@
 const pool = require('./db');
+const express = require('express');
+const path = require('path');
 
+const app = express();
+const port = 3000;
+
+// Test DB connection
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('Database connection error:', err);
@@ -8,89 +14,106 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-const express = require('express');
-const { lstat } = require('fs');
-const app = express();
-const port = 3000;
-const path = require('path');
-const crypto = require(`crypto`);
-
+// Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.use(express.urlencoded ({ extended: true }));
 app.set('view engine', 'ejs');
-app.set("views", path.join(__dirname, "views"));
+app.set('views', path.join(__dirname, 'views'));
 
-let books = [];
-
+// Render homepage
 app.get('/', (req, res) => {
-    res.render('index', { books });
+  res.render('index');
 });
 
+// Get all books
+app.get('/books', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM books');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching books:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
+// Add a new book
+app.post('/add-book', async (req, res) => {
+  try {
+    const { title, author } = req.body;
+    const trimmedTitle = title?.trim();
+    const trimmedAuthor = author?.trim();
 
-app.post('/add-book', (req, res) => {
+    if (!trimmedTitle || !trimmedAuthor) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Check for duplicates
+    const duplicateCheck = await pool.query(
+      'SELECT * FROM books WHERE title = $1 AND author = $2',
+      [trimmedTitle, trimmedAuthor]
+    );
+    if (duplicateCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Book already exists' });
+    }
+
+    // Insert new book
+    const result = await pool.query(
+      'INSERT INTO books (title, author) VALUES ($1, $2) RETURNING *',
+      [trimmedTitle, trimmedAuthor]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error adding book:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update a book
+app.patch('/edit-book/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
     const { title, author } = req.body;
 
-    const trimmedTitle = title.trim();
-    const trimmedAuthor = author.trim();
-
-
-    if ( trimmedTitle === "" || trimmedAuthor === ""){
-        return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const duplicate = books.some(book =>
-        book.title === trimmedTitle && book.author === trimmedAuthor
+    const result = await pool.query(
+      'UPDATE books SET title = $1, author = $2 WHERE id = $3 RETURNING *',
+      [title, author, id]
     );
-    
-    if (duplicate) {
-    return res.status(400).json({ error: "Book already exists" });
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Book not found' });
     }
 
-    const id = crypto.randomUUID();
-
-    const newBook = { id, title, author };
-    books.push(newBook);
-
-    res.redirect("/"); 
+    res.json({ message: 'Book updated successfully', updatedBook: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating book:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
-app.delete('/remove-book/:id', (req, res) => {
-    
+// Delete a book
+app.delete('/remove-book/:id', async (req, res) => {
+  try {
     const { id } = req.params;
 
-    const index =  books.findIndex(book => book.id === id);
+    const result = await pool.query(
+      'DELETE FROM books WHERE id = $1 RETURNING *',
+      [id]
+    );
 
-    if (index === -1) {
-        return res.status(400).json({error: 'Book not found'});
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Book not found' });
     }
 
-    const deleteBook = books.splice(index, 1);
-
-    res.json({ message: 'Book deleted', book: deleteBook[0] });
-
+    res.json({ message: 'Book deleted successfully', deletedBook: result.rows[0] });
+  } catch (err) {
+    console.error('Error deleting book:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
-app.patch('/edit-book/:id', (req, res) => {
-
-    const { id } = req.params;
-    const updateData = req.body;
-
-    const index =  books.findIndex(book => book.id === id);
-
-    if (index === -1) {
-    return res.status(400).json({error: 'Book not found'});
-    }
-
-    const updatedBook = { ...books[index], ...updateData };
-
-    books[index] = updatedBook;
-    res.json({ message: 'Updated sucessfully', updatedBook });
-    
-});
-
-
-app.listen(port, () => { 
-    console.log(`Express app listening on port ${port}!`);
+// Start server
+app.listen(port, () => {
+  console.log(`Express app listening on port ${port}!`);
 });
